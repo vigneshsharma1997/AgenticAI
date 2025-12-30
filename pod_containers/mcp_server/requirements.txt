@@ -1,0 +1,4 @@
+pandas==2.2.3
+sqlalchemy==2.0.41
+aiosqlite==0.21.0
+fastmcp==2.12.5

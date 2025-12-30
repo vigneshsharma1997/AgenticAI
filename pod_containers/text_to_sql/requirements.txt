@@ -5,9 +5,10 @@ pandas==2.2.3
 sqlalchemy==2.0.41
 aiosqlite==0.21.0
 uvicorn==0.35.0
+requests==2.32.3
 fastapi==0.115.14
 plotly==6.3.0
 langchain==0.3.26
 ipykernel==7.1.0
 msal==1.34.0
-requests==2.32.3
+python-dotenv==1.0.1
