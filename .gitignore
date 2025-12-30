@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+graphenv/
+
+# SQLite DB
+*.db
+
+# Csv 
+*.csv
+
+# OS
+.DS_Store
