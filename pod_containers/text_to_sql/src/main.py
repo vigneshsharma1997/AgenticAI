@@ -9,7 +9,7 @@ import json
 from core.connectors.mcp_client import get_mcp_tool
 from core.services.state import ChatState
 from core.services.graph import build_graph
-from typing import TypeDict, List , Any
+from typing import TypedDict, List , Any
 from langchain_core.runnables.config import RunnableConfig
 
 load_dotenv()

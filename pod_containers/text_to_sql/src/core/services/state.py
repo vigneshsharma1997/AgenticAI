@@ -1,5 +1,5 @@
-from typing import TypeDict, List , Any
+from typing import TypedDict, List, Any
 
-class ChatState(TypeDict):
+class ChatState(TypedDict):
     history : List[dict]
     question:str

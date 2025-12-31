@@ -48,12 +48,26 @@ def init_db(db_path:str):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    cursor.execute("PRAGMA foreign_keys = ON;")
+    # cursor.execute("PRAGMA foreign_keys = ON;")
     for stmt in CREATE_TABLE_SQL:
         cursor.execute(stmt)
     
     conn.commit()
     return conn
+
+
+def run_query():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("select distinct item_name from dim_items;")
+
+    results = cursor.fetchall()
+
+    for row in results:
+        print(row[0])
+
+    conn.close()
 
 ## Data Loading
 def load_dim_items(conn):
@@ -81,13 +95,15 @@ def load_dim_item_loss_rates(conn):
 
 if __name__=='__main__':
     print("Initialized Retail Sqllite Database")
-    conn = init_db(DB_PATH)
-    print("Loading Dim Tables")
-    load_dim_items(conn)
-    load_dim_item_loss_rates(conn)
-    print("Loading fact Tables")
-    load_fact_tables(conn)
-    load_fact_wholesale_prices(conn)
-    conn.close()
+    # conn = init_db(DB_PATH)
+    run_query()
+    # print("Loading Dim Tables")
+    # load_dim_items(conn)
+    # load_dim_item_loss_rates(conn)
+    # print("Loading fact Tables")
+    # load_fact_tables(conn)
+    # load_fact_wholesale_prices(conn)
+
+    # conn.close()
     print("Database created and data loaded successfully.")
 

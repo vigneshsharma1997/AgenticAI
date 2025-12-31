@@ -1,0 +1,156 @@
+{
+  "dataset": "retail_item_sales_analytics",
+  "tables": {
+    "dim_items": {
+      "description": "Master data for items and their categories",
+      "primary_key": "item_code",
+      "columns": {
+        "item_code": {
+          "type": "string",
+          "description": "Unique identifier for the item"
+        },
+        "item_name": {
+          "type": "string",
+          "description": "Name of the item"
+        },
+        "category_code": {
+          "type": "string",
+          "description": "Unique identifier for the item category"
+        },
+        "category_name": {
+          "type": "string",
+          "description": "Category to which the item belongs"
+        }
+      }
+    },
+    "fact_sales": {
+      "description": "Daily transactional sales and returns at item level",
+      "primary_key": null,
+      "columns": {
+        "date": {
+          "type": "date",
+          "description": "Date of the transaction"
+        },
+        "time": {
+          "type": "time",
+          "description": "Time of the transaction"
+        },
+        "item_code": {
+          "type": "string",
+          "description": "Item sold or returned"
+        },
+        "quantity_sold_kg": {
+          "type": "decimal",
+          "description": "Quantity sold or returned in kilograms"
+        },
+        "unit_selling_price_rmb_per_kg": {
+          "type": "decimal",
+          "description": "Selling price per kilogram in RMB"
+        },
+        "sale_or_return": {
+          "type": "string",
+          "description": "Indicates whether the transaction is a sale or a return"
+        },
+        "discount_applied": {
+          "type": "boolean",
+          "description": "Whether a discount was applied"
+        }
+      }
+    },
+    "fact_wholesale_prices": {
+      "description": "Daily wholesale price of items",
+      "primary_key": null,
+      "columns": {
+        "date": {
+          "type": "date",
+          "description": "Date of wholesale price"
+        },
+        "item_code": {
+          "type": "string",
+          "description": "Item identifier"
+        },
+        "wholesale_price_rmb_per_kg": {
+          "type": "decimal",
+          "description": "Wholesale price per kilogram in RMB"
+        }
+      }
+    },
+    "dim_item_loss_rates": {
+      "description": "Average loss rate for each item",
+      "primary_key": "item_code",
+      "columns": {
+        "item_code": {
+          "type": "string",
+          "description": "Item identifier"
+        },
+        "item_name": {
+          "type": "string",
+          "description": "Item name"
+        },
+        "loss_rate_percent": {
+          "type": "decimal",
+          "description": "Average loss rate percentage for the item"
+        }
+      }
+    }
+  },
+  "relationships": [
+    {
+      "from_table": "fact_sales",
+      "from_column": "item_code",
+      "to_table": "dim_items",
+      "to_column": "item_code",
+      "type": "many-to-one",
+      "join_type": "inner",
+      "business_meaning": "Each sales transaction is associated with one item"
+    },
+    {
+      "from_table": "fact_wholesale_prices",
+      "from_column": "item_code",
+      "to_table": "dim_items",
+      "to_column": "item_code",
+      "type": "many-to-one",
+      "join_type": "inner",
+      "business_meaning": "Each wholesale price record corresponds to one item"
+    },
+    {
+      "from_table": "dim_item_loss_rates",
+      "from_column": "item_code",
+      "to_table": "dim_items",
+      "to_column": "item_code",
+      "type": "one-to-one",
+      "join_type": "left",
+      "business_meaning": "Each item may have an associated average loss rate"
+    }
+  ],
+  "metrics": {
+    "total_sales_revenue": {
+      "expression": "SUM(daily_sales.quantity_sold_kg * daily_sales.unit_selling_price_rmb_per_kg)",
+      "description": "Total sales revenue in RMB"
+    },
+    "total_quantity_sold": {
+      "expression": "SUM(daily_sales.quantity_sold_kg)",
+      "description": "Total quantity sold in kilograms"
+    },
+    "net_sales_revenue": {
+      "expression": "SUM(CASE WHEN daily_sales.sale_or_return = 'sale' THEN daily_sales.quantity_sold_kg * daily_sales.unit_selling_price_rmb_per_kg ELSE -1 * daily_sales.quantity_sold_kg * daily_sales.unit_selling_price_rmb_per_kg END)",
+      "description": "Net revenue accounting for returns"
+    },
+    "average_wholesale_price": {
+      "expression": "AVG(daily_wholesale_price.wholesale_price_rmb_per_kg)",
+      "description": "Average wholesale price per kilogram"
+    },
+    "gross_margin": {
+      "expression": "SUM(daily_sales.quantity_sold_kg * (daily_sales.unit_selling_price_rmb_per_kg - daily_wholesale_price.wholesale_price_rmb_per_kg))",
+      "description": "Gross margin based on selling and wholesale price"
+    }
+  },
+  "lookup_index":{
+    "item":["item_name"],
+    "category":["category_name"]
+  },
+  "time_dimensions": [
+    "fact_sales.date",
+    "fact_wholesale_prices.date"
+  ]
+}
