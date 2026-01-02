@@ -1,0 +1,302 @@
+Below are **ground-truth SQL queries** designed specifically for your **retail SQLite schema**.
+These are **deterministic, unambiguous, and analytics-grade**, making them ideal for:
+
+* ✅ Text-to-SQL benchmarking
+* ✅ LangGraph / Agentic evaluation
+* ✅ Interview demos
+* ✅ Unit tests for SQL validators
+
+I’ve grouped them by **business intent**.
+
+---
+
+# 📦 Schema Reminder (for grounding)
+
+```text
+dim_items
+- item_code, item_name, category_code, category_name
+
+fact_sales
+- sale_id, sale_date, sale_time, item_code,
+  quantity_sold_kg, unit_selling_price,
+  sale_or_return, discount_applied
+
+fact_wholesale_prices
+- price_date, item_code, wholesale_price
+
+dim_item_loss_rates
+- item_code, item_name, loss_rate_percent
+```
+
+---
+
+# 1️⃣ Basic Sales Metrics (Ground Truth)
+
+### Q1. Total sales quantity (kg) by item
+
+```sql
+SELECT
+    di.item_code,
+    di.item_name,
+    SUM(fs.quantity_sold_kg) AS total_quantity_kg
+FROM fact_sales fs
+JOIN dim_items di
+    ON fs.item_code = di.item_code
+WHERE fs.sale_or_return = 'Sale'
+GROUP BY di.item_code, di.item_name;
+```
+
+---
+
+### Q2. Total revenue by item
+
+```sql
+SELECT
+    di.item_code,
+    di.item_name,
+    SUM(fs.quantity_sold_kg * fs.unit_selling_price) AS total_revenue
+FROM fact_sales fs
+JOIN dim_items di
+    ON fs.item_code = di.item_code
+WHERE fs.sale_or_return = 'Sale'
+GROUP BY di.item_code, di.item_name;
+```
+
+---
+
+### Q3. Daily total revenue
+
+```sql
+SELECT
+    sale_date,
+    SUM(quantity_sold_kg * unit_selling_price) AS daily_revenue
+FROM fact_sales
+WHERE sale_or_return = 'Sale'
+GROUP BY sale_date
+ORDER BY sale_date;
+```
+
+---
+
+# 2️⃣ Category-Level Analysis
+
+### Q4. Revenue by category
+
+```sql
+SELECT
+    di.category_name,
+    SUM(fs.quantity_sold_kg * fs.unit_selling_price) AS category_revenue
+FROM fact_sales fs
+JOIN dim_items di
+    ON fs.item_code = di.item_code
+WHERE fs.sale_or_return = 'Sale'
+GROUP BY di.category_name;
+```
+
+---
+
+### Q5. Top 5 categories by sales quantity
+
+```sql
+SELECT
+    di.category_name,
+    SUM(fs.quantity_sold_kg) AS total_quantity_kg
+FROM fact_sales fs
+JOIN dim_items di
+    ON fs.item_code = di.item_code
+WHERE fs.sale_or_return = 'Sale'
+GROUP BY di.category_name
+ORDER BY total_quantity_kg DESC
+LIMIT 5;
+```
+
+---
+
+# 3️⃣ Discount Impact Analysis
+
+### Q6. Revenue from discounted vs non-discounted sales
+
+```sql
+SELECT
+    discount_applied,
+    SUM(quantity_sold_kg * unit_selling_price) AS revenue
+FROM fact_sales
+WHERE sale_or_return = 'Sale'
+GROUP BY discount_applied;
+```
+
+---
+
+### Q7. Average selling price with vs without discount
+
+```sql
+SELECT
+    discount_applied,
+    AVG(unit_selling_price) AS avg_price
+FROM fact_sales
+WHERE sale_or_return = 'Sale'
+GROUP BY discount_applied;
+```
+
+---
+
+# 4️⃣ Wholesale vs Retail Margin (IMPORTANT)
+
+### Q8. Daily gross margin by item
+
+```sql
+SELECT
+    fs.sale_date,
+    fs.item_code,
+    di.item_name,
+    SUM(
+        fs.quantity_sold_kg *
+        (fs.unit_selling_price - wp.wholesale_price)
+    ) AS gross_margin
+FROM fact_sales fs
+JOIN fact_wholesale_prices wp
+    ON fs.item_code = wp.item_code
+   AND fs.sale_date = wp.price_date
+JOIN dim_items di
+    ON fs.item_code = di.item_code
+WHERE fs.sale_or_return = 'Sale'
+GROUP BY fs.sale_date, fs.item_code, di.item_name;
+```
+
+---
+
+### Q9. Average margin percentage by item
+
+```sql
+SELECT
+    di.item_code,
+    di.item_name,
+    AVG(
+        (fs.unit_selling_price - wp.wholesale_price)
+        / fs.unit_selling_price * 100
+    ) AS avg_margin_percent
+FROM fact_sales fs
+JOIN fact_wholesale_prices wp
+    ON fs.item_code = wp.item_code
+   AND fs.sale_date = wp.price_date
+JOIN dim_items di
+    ON fs.item_code = di.item_code
+WHERE fs.sale_or_return = 'Sale'
+GROUP BY di.item_code, di.item_name;
+```
+
+---
+
+# 5️⃣ Loss-Adjusted Performance (Advanced Retail KPI)
+
+### Q10. Net sellable quantity after loss
+
+```sql
+SELECT
+    di.item_code,
+    di.item_name,
+    SUM(
+        fs.quantity_sold_kg *
+        (1 - lr.loss_rate_percent / 100.0)
+    ) AS net_quantity_kg
+FROM fact_sales fs
+JOIN dim_item_loss_rates lr
+    ON fs.item_code = lr.item_code
+JOIN dim_items di
+    ON fs.item_code = di.item_code
+WHERE fs.sale_or_return = 'Sale'
+GROUP BY di.item_code, di.item_name;
+```
+
+---
+
+### Q11. Loss-adjusted revenue
+
+```sql
+SELECT
+    di.item_code,
+    di.item_name,
+    SUM(
+        fs.quantity_sold_kg *
+        (1 - lr.loss_rate_percent / 100.0) *
+        fs.unit_selling_price
+    ) AS loss_adjusted_revenue
+FROM fact_sales fs
+JOIN dim_item_loss_rates lr
+    ON fs.item_code = lr.item_code
+JOIN dim_items di
+    ON fs.item_code = di.item_code
+WHERE fs.sale_or_return = 'Sale'
+GROUP BY di.item_code, di.item_name;
+```
+
+---
+
+# 6️⃣ Time-Based (YTD / Trend Queries)
+
+### Q12. Yearly revenue trend
+
+```sql
+SELECT
+    strftime('%Y', sale_date) AS year,
+    SUM(quantity_sold_kg * unit_selling_price) AS yearly_revenue
+FROM fact_sales
+WHERE sale_or_return = 'Sale'
+GROUP BY year
+ORDER BY year;
+```
+
+---
+
+### Q13. Monthly sales quantity trend
+
+```sql
+SELECT
+    strftime('%Y-%m', sale_date) AS month,
+    SUM(quantity_sold_kg) AS total_quantity_kg
+FROM fact_sales
+WHERE sale_or_return = 'Sale'
+GROUP BY month
+ORDER BY month;
+```
+
+---
+
+# 7️⃣ High-Value Benchmark Queries (Text-to-SQL Gold Set)
+
+These are **excellent ground truth questions** for evaluation:
+
+1. *Which items generated the highest gross margin in 2022?*
+2. *What is the loss-adjusted revenue by category for 2023?*
+3. *Compare discounted vs non-discounted revenue by month.*
+4. *Which items consistently sold below wholesale cost?*
+5. *What is the YoY revenue growth by category?*
+
+(All resolvable using the above schema & joins.)
+
+---
+
+# ✅ Why These Are “Ground Truth”
+
+* No ambiguous joins
+* Explicit date alignment
+* Fully qualified tables
+* Deterministic aggregations
+* SQLite-compatible
+
+Perfect for:
+
+* ✅ SQL validator tools
+* ✅ LLM evaluation
+* ✅ Cortex / Genie / LangChain comparisons
+
+---
+
+If you want next, I can:
+
+* 📊 Convert these into **expected result schemas**
+* 🤖 Create **Text-to-SQL benchmark JSON**
+* 🧪 Add **unit tests for SQL correctness**
+* 🧠 Label query difficulty (Easy / Medium / Hard)
+
+Just tell me what you want next 👍

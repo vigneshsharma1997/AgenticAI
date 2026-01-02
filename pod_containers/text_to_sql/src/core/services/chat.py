@@ -14,11 +14,14 @@ async def chat_node(state:ChatState)->ChatState:
     history = state.get("history")
     if question is None:
         return {"history":[],"question":"No question provided"}
-    try : 
-        loop = asyncio.get_event_loop()
-        result = loop.run_until_complete(run_agent(question,history))
+    try:
+        print("In Chat Node")
+        result = await run_agent(question, history)
     except Exception as e:
-        result = asyncio.run(run_agent(question,history))
-    
+        return {
+            "history": history,
+            "answer": f"Agent execution failed: {str(e)}"
+        }
+
     new_history_entry = {"question":question,"answer":result}
     return {"history":state["history"]+[new_history_entry], "question":question}

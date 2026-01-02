@@ -33,7 +33,19 @@ def validate_sql(input_data):
     try:
         # Handle either JSON string or dict
         if isinstance(input_data, str):
-            inp = json.loads(input_data)
+            # inp = json.loads(input_data)
+            input_data = input_data.strip()
+
+            # Case 1: Raw SQL string (most common in agent calls)
+            if input_data.lower().startswith("select"):
+                inp = {
+                    "query": input_data,
+                    "table": "",
+                    "question": ""
+                }
+            else:
+                # Case 2: JSON string
+                inp = json.loads(input_data)
         elif isinstance(input_data, dict):
             inp = input_data
         else:
@@ -55,11 +67,25 @@ def validate_sql(input_data):
                 "SQLite does not support catalog.schema.table format. "
                 "Use direct table name only."
             )
-
+        
         # 2. Table existence check 
-        tables = semantic_model.get("tables", {})
-        if table not in tables:
-            errors.append(f"Table '{table}' not found in semantic model.")
+        TABLE_REGEX = re.compile(
+            r"\b(from|join)\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+            re.IGNORECASE
+        )
+        matches = TABLE_REGEX.findall(query)
+        tables_in_query = {m[1] for m in matches}
+        print("Tables in Query: ",tables_in_query)
+
+        semantic_tables = set(semantic_model.get("tables", {}).keys())
+        print("Semantic Tables ",semantic_tables)
+
+        missing_tables = tables_in_query - semantic_tables
+
+        if missing_tables:
+            errors.append(
+                f"Table(s) not found in semantic model: {', '.join(missing_tables)}"
+            )
 
         # 3. Extract referenced columns
         column_pattern = re.compile(r"\b([a-zA-Z_][a-zA-Z0-9_]*)\b")
@@ -73,26 +99,28 @@ def validate_sql(input_data):
         candidate_columns = {
             t for t in tokens if t not in sql_keywords and not t.isdigit()
         }   
+
         #4. Validate columns
-        if table in tables:
-            valid_columns = set(tables[table]["columns"].keys())
+        if table in semantic_tables:
+            valid_columns = set(semantic_tables[table]["columns"].keys())
             for col in candidate_columns:
                 if col not in valid_columns:
                     errors.append(
                         f"Column '{col}' not found in table '{table}'.")
                     
+        print("Errors: ", errors)
 
         # 5. Final verdict    
         if errors:
-            return {
+            return json.dumps({
                 "valid": False,
                 "reason": "; ".join(errors)
-            }
+            })
 
-        return {
+        return json.dumps({
             "valid": True,
             "reason": "SQL validated successfully for SQLite."
-        }
+        })
 
     except Exception as e:
         print(str(e))
@@ -109,5 +137,5 @@ validate_sql_tool = Tool(
         "Ensures SQLite-compatible syntax, valid tables/columns, "
         "and time column usage for time-based questions."
     ),
-    func=lambda inp: validate_sql(inp, semantic_model)
+    func=lambda inp: validate_sql(inp)
 )

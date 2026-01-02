@@ -10,7 +10,7 @@ async def get_mcp_tool():
     try:
         client = MultiServerMCPClient({
             "MCP_Server":{
-                "url":f"{os.getenv("MCP_URL")}",
+                "url":os.getenv("MCP_URL"),
                 "transport" : "streamable_http"
             }
         })
@@ -66,6 +66,6 @@ async def create_mcp_sql_query_tool(sql_query_tool):
             })
     return Tool(
         name="mcp_sql_query",
-        description="Sql tool that queries databricks datasets based on user inputs",
+        description="Sql tool that queries SQLite datasets based on user inputs",
         func=sync_resolve
     )
