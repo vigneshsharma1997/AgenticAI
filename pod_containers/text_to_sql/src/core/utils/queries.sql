@@ -35,3 +35,13 @@ CREATE TABLE IF NOT EXISTS dim_item_loss_rates (
     loss_rate_percent REAL NOT NULL,
     FOREIGN KEY (item_code) REFERENCES dim_items(item_code)
 );
+
+
+CREATE TABLE IF NOT EXISTS sf_sessions (
+        session_id TEXT PRIMARY KEY,
+        account TEXT NOT NULL,
+        host TEXT NOT NULL,
+        token TEXT NOT NULL,
+        token_issued_at REAL NOT NULL,
+        expires_at REAL NOT NULL
+    );

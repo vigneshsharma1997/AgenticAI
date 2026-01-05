@@ -18,11 +18,12 @@ app.add_middleware(
 # app.add_middleware(SessionMiddleware)
 
 API_PREFIX = "/api/v1"
-# app.include_router(login.router)
-# app.include_router(session.router,prefix = API_PREFIX)
+app.include_router(login.router)
 app.include_router(router.router, prefix = API_PREFIX)
 
 @app.get("/get_health_check",tags=["Health Check"])
 async def health_check():
     "Health Check endpoint to ensure API service is running properly"
     return {"message":"Welcome to Gateway Service health check endpoint."}
+
+# uvicorn main:app --reload --host 0.0.0.0 --port 8000

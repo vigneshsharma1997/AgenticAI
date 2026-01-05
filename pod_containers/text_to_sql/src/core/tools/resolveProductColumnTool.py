@@ -19,7 +19,7 @@ CACHE_TTL_SECONDS = 24*60*60 # 1 Day
 _table_cache = {} # Table_name -> {"timestamp":<epoch>,"col_value_map":{col:{values}}}
 
 
-def create_resolve_product_column_tool(sql_query_tool):
+async def create_resolve_product_column_tool(sql_query_tool):
     async def async_resolve(value:str,value_type:str):
         print(f"Calling Resolve Product for {value}")
         # determine columns + table
