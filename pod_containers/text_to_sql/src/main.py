@@ -12,7 +12,7 @@ import json
 from core.connectors.mcp_client import get_mcp_tool
 from core.services.state import ChatState
 from core.services.graph import build_graph
-from typing import TypedDict, List , Any
+from typing import TypedDict, List , Any, Literal
 from langchain_core.runnables.config import RunnableConfig
 from core.connectors.database_connector import SnowflakeCortexConnector
 from core.utils.config import resolve_sf_session
@@ -35,9 +35,13 @@ class QueryPayload(BaseModel):
     user_query : str
     # chathistory : List[dict]
 
+class ContentItem(BaseModel):
+    type:Literal["text"]
+    text:str
+
 class Message(BaseModel):
-    role: str
-    content: str
+    role: Literal["user", "assistant", "system"]
+    content: List[ContentItem]
 
 class CortexChatRequest(BaseModel):
     messages: List[Message]
@@ -110,53 +114,29 @@ async def process_chat_sf(request:CortexChatRequest,sf_session=Depends(resolve_s
     semantic_model = "@CORTEX_ANALYST_DEMO.REVENUE_TIMESERIES.RAW_DATA/revenue_timeseries.yaml"
     payload = {
         "messages": [m.dict() for m in request.messages],
-        "semantic_model_file": request.semantic_model_file,
-        "stream": request.streaming
+        "semantic_model_file": semantic_model
     }
 
     print("STREAMING MODE:", request.streaming)
 
-    if request.streaming:
-        def stream():
-            for chunk in connector.stream_response(
-                "/api/v2/cortex/analyst/message",
-                payload
-            ):
-                print("CHUNK:", chunk)
-                yield f"data: {json.dumps(chunk)}\n\n"
-
-        return StreamingResponse(stream(), media_type="text/event-stream")
-
-    else:
-        response = connector.post(
-            "/api/v2/cortex/analyst/message",
-            payload
-        )
-        print("CORTEX RESPONSE:", response)
-        return response
-    # if request.streaming==True:
-    #     print("Inside Truee.")
-    #     payload = {
-    #         "messages": [m.dict() for m in request.messages],
-    #         "semantic_model_file": request.semantic_model_file,
-    #         "stream": True
-    #     }
+    # if request.streaming:
     #     def stream():
-    #         for chunk in connector.stream_response("/api/v2/cortex/analyst/message",payload):
-    #             yield f"data: {chunk}\n\n"
+    #         for chunk in connector.stream_response(
+    #             "/api/v2/cortex/analyst/message",
+    #             payload
+    #         ):
+    #             print("CHUNK:", chunk)
+    #             yield f"data: {json.dumps(chunk)}\n\n"
 
-    #     return StreamingResponse(stream(),media_type="text/event-stream")
+    #     return StreamingResponse(stream(), media_type="text/event-stream")
 
-    # elif request.streaming == False:
-    #     print("Inside False")
-    #     payload = {
-    #         "messages": [m.dict() for m in request.messages],
-    #         "semantic_model_file": request.semantic_model_file,
-    #         "stream": False
-    #     }
-    #     response = connector.post("/api/v2/cortex/analyst/message", payload)
-    #     print("CORTEX RESPONSE:", response)
-    #     return response
+    # else:
+    response = connector.post(
+        "/api/v2/cortex/analyst/message",
+        payload
+    )
+    print("CORTEX RESPONSE:", response)
+    return response
 
     
     

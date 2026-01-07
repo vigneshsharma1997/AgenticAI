@@ -1,6 +1,9 @@
 import requests
 from typing import Dict,Generator,Optional
 from fastapi import HTTPException
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
 class SnowflakeCortexConnector:
     """
@@ -11,14 +14,13 @@ class SnowflakeCortexConnector:
         account_host:str,
         token:str,
         timeout:60):
-        self.host_url = f"https://{account_host}"
+        self.host_url = f"https://{account_host}/"
         self.timeout= timeout
         self.token = token
         self.headers = {
-            "Authorization": f"Bearer {token}",
+            "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
-            # optional: explicit token type (PAT / KEYPAIR_JWT / OAUTH)
-            "X-Snowflake-Authorization-Token-Type": "PAT"
+            "X-Snowflake-Authorization-Token-Type": "KEYPAIR_JWT"
         }
 
         # self.headers = {
@@ -44,8 +46,7 @@ class SnowflakeCortexConnector:
             url=url,
             json=payload,
             headers=self.headers,
-            timeout=self.timeout,
-            stream=stream
+            timeout=self.timeout
         )
         # Do NOT raise without logging the body first
         if not response.ok:
@@ -56,7 +57,10 @@ class SnowflakeCortexConnector:
             print("RESPONSE TEXT:", response.text)
             # Return or raise a friendly error
             raise HTTPException(status_code=502, detail=f"Cortex error {response.status_code}: {response.text}")
-        return response
+        
+        response.raise_for_status()
+        return response.json()
+        
 
     
     def stream_response(self,endpoint:str,payload:Dict)->Generator[str,None,None]:
