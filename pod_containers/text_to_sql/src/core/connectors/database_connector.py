@@ -113,15 +113,15 @@ class SnowflakeCortexConnector:
             }
             
         AGENT_RUN_ENDPOINT_TEMPLATE = f"{self.host_url}api/v2/databases/{os.getenv('SF_DATABASE')}/schemas/{os.getenv('SF_SCHEMA')}/agents/{os.getenv('SF_AGENT')}:run"
-
+        body = req.dict()
         print(f"===Cortex Agent URL : {AGENT_RUN_ENDPOINT_TEMPLATE}")
-        print(f"Request Payload: {request}")
+        print(f"Request Payload: {body}")
         async with httpx.AsyncClient(timeout=None) as client:
             async with client.stream(
                 "POST",
                 AGENT_RUN_ENDPOINT_TEMPLATE,
                 headers=headers,
-                json=request,
+                json=body,
             ) as resp:
 
                 if resp.status_code != 200:

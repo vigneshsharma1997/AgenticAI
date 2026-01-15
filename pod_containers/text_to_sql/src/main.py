@@ -108,7 +108,6 @@ async def chat_graph_node(req:QueryPayload):
         "answer": answer
     }
 
-
 @app.post("/sf_chat")
 async def process_chat_sf(request:CortexChatRequest,sf_session=Depends(resolve_sf_session)):
     """
