@@ -7,7 +7,8 @@ import os
 import jwt  # PyJWT
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.serialization import load_pem_public_key, load_pem_private_key
-
+from dotenv import load_dotenv
+load_dotenv()
 # ---------- CONFIG ----------
 ACCOUNT_IDENTIFIER = "CGVJNYQ-PCA73931"   # use exact account identifier / locator (UPPERCASE)
 USER = "VIGNESH10"                        # your snowflake username (UPPERCASE)
@@ -15,7 +16,9 @@ PRIVATE_KEY_PATH = os.path.expanduser("/Users/vigneshsharma/rsa_key.pem")   # pa
 PUBLIC_KEY_PATH = os.path.expanduser("/Users/vigneshsharma/rsa_key.pub")   # path to public key (change)
 PRIVATE_KEY_PASSPHRASE = None   # if your private key is encrypted: b"your-passphrase"
 # Cortex endpoint (example)
-CORTEX_ENDPOINT = f"https://{ACCOUNT_IDENTIFIER.lower()}.snowflakecomputing.com/api/v2/cortex/analyst/message"
+# CORTEX_ENDPOINT = f"https://{ACCOUNT_IDENTIFIER.lower()}.snowflakecomputing.com/api/v2/cortex/analyst/message"
+CORTEX_ENDPOINT = f"https://{ACCOUNT_IDENTIFIER.lower()}.snowflakecomputing.com/api/v2/databases/{os.getenv('SF_DATABASE')}/schemas/{os.getenv('SF_SCHEMA')}/agents/{os.getenv('SF_AGENT')}:run"
+
 # --------------------------------
 
 def compute_public_key_fingerprint(public_key_path: str) -> str:

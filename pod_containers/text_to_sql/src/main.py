@@ -1,4 +1,4 @@
-from fastapi import FastAPI,Depends
+from fastapi import FastAPI,Depends,HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from typing import Dict
@@ -16,6 +16,7 @@ from typing import TypedDict, List , Any, Literal
 from langchain_core.runnables.config import RunnableConfig
 from core.connectors.database_connector import SnowflakeCortexConnector
 from core.utils.config import resolve_sf_session
+# from core.tools.create_thread import create_thread
 
 load_dotenv()
 
@@ -43,11 +44,14 @@ class Message(BaseModel):
     role: Literal["user", "assistant", "system"]
     content: List[ContentItem]
 
+class CortexAgent(BaseModel):
+    messages: List[Message]
+
+
 class CortexChatRequest(BaseModel):
     messages: List[Message]
     semantic_model_file: str
     streaming : bool = False
-
 
 @app.post("/chat_graph")
 async def chat_graph_node(req:QueryPayload):
@@ -108,38 +112,42 @@ async def chat_graph_node(req:QueryPayload):
 @app.post("/sf_chat")
 async def process_chat_sf(request:CortexChatRequest,sf_session=Depends(resolve_sf_session)):
     """
-  s
+        Process user query to Convert NL into SQL Query.
     """
     connector = SnowflakeCortexConnector(account_host=sf_session['host'],token =sf_session['token'],timeout=60)
     semantic_model = "@CORTEX_ANALYST_DEMO.REVENUE_TIMESERIES.RAW_DATA/revenue_timeseries.yaml"
+    
     payload = {
         "messages": [m.dict() for m in request.messages],
         "semantic_model_file": semantic_model
     }
 
     print("STREAMING MODE:", request.streaming)
-
-    # if request.streaming:
-    #     def stream():
-    #         for chunk in connector.stream_response(
-    #             "/api/v2/cortex/analyst/message",
-    #             payload
-    #         ):
-    #             print("CHUNK:", chunk)
-    #             yield f"data: {json.dumps(chunk)}\n\n"
-
-    #     return StreamingResponse(stream(), media_type="text/event-stream")
-
-    # else:
     response = connector.post(
-        "/api/v2/cortex/analyst/message",
+        "api/v2/cortex/analyst/message",
         payload
     )
     print("CORTEX RESPONSE:", response)
     return response
 
+@app.post("/cortex_agent")
+async def process_cortex_agent(req:CortexAgent,sf_session=Depends(resolve_sf_session)):
+    """
+        Process user query to Convert NL into SQL Query .Execute the Query and return Text wrapper answer.
+    """
+    connector = SnowflakeCortexConnector(account_host=sf_session['host'],token =sf_session['token'],timeout=60)
+    semantic_model = "@CORTEX_ANALYST_DEMO.REVENUE_TIMESERIES.RAW_DATA/revenue_timeseries.yaml"
+    token = sf_session['token']
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing gateway token header 'X-Gateway-Token'")
+
+    # 2 Stream Agent Run Responses
+    event_stream = connector.stream_run_agent(token,req)
+    # return as streaming response (content-type text/event-stream)
+    return StreamingResponse(event_stream, media_type="text/event-stream")
     
-    
+
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app",host="0.0.0.0",port = 8001, reload=True)
